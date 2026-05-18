@@ -1,11 +1,11 @@
-import { VertexAI } from "@google-cloud/vertexai";
+import { GoogleGenAI } from "@google/genai";
 
 /**
- * Vertex AI Gemini provider adapter.
+ * Vertex AI Gemini provider adapter (using @google/genai SDK).
  */
 export class VertexAIProvider {
   /**
-   * @param {{ project?: string, location: string, model: string, vertexFactory?: (options: { project: string, location: string }) => { getGenerativeModel: (opts: { model: string }) => { generateContent: (request: unknown) => Promise<{ response: any }> } } }} options
+   * @param {{ project?: string, location: string, model: string, vertexFactory?: (options: { project: string, location: string }) => any }} options
    */
   constructor({ project, location, model, vertexFactory }) {
     this.project = project;
@@ -23,25 +23,24 @@ export class VertexAIProvider {
     }
 
     const start = Date.now();
-    const factory =
-      this.vertexFactory ??
-      ((options) => {
-        const client = new VertexAI(options);
-        return client;
-      });
+    const ai = this.vertexFactory
+      ? this.vertexFactory({ project: this.project, location: this.location })
+      : new GoogleGenAI({
+          vertexai: true,
+          project: this.project || process.env.VERTEX_AI_PROJECT,
+          location: this.location || "us-central1"
+        });
 
-    const client = factory({ project: this.project || "", location: this.location });
-    const model = client.getGenerativeModel({ model: this.model });
+    const config = systemPrompt ? { systemInstruction: systemPrompt } : undefined;
 
-    const request = {
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      ...(systemPrompt ? { systemInstruction: { role: "system", parts: [{ text: systemPrompt }] } } : {})
-    };
+    const response = await ai.models.generateContent({
+      model: this.model,
+      contents: prompt,
+      ...(config ? { config } : {})
+    });
 
-    const response = await model.generateContent(request);
-    const usage = response.response?.usageMetadata ?? {};
-    const contentParts = response.response?.candidates?.[0]?.content?.parts ?? [];
-    const content = contentParts.map((part) => part.text || "").join("").trim();
+    const content = response.text?.trim() ?? "";
+    const usage = response.usageMetadata ?? {};
 
     return {
       content,
