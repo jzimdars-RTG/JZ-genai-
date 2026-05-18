@@ -93,7 +93,18 @@ def _log_call(
     )
 
 
-def _call_llm(
+def _extract_token_counts(usage_metadata: Any) -> tuple[int, int]:
+    """Extract (input_tokens, output_tokens) from LangChain usage metadata.
+
+    Handles both dict-shaped metadata (older SDK versions) and object-shaped
+    metadata (newer SDK versions) to keep the client forward-compatible.
+    """
+    if isinstance(usage_metadata, dict):
+        return usage_metadata.get("input_tokens", 0), usage_metadata.get("output_tokens", 0)
+    return getattr(usage_metadata, "input_tokens", 0), getattr(usage_metadata, "output_tokens", 0)
+
+
+
     llm: ChatVertexAI,
     system_prompt: str,
     user_prompt: str,
@@ -107,8 +118,7 @@ def _call_llm(
     latency_ms = int((time.monotonic() - start) * 1000)
 
     usage = getattr(response, "usage_metadata", None) or {}
-    input_tokens: int = usage.get("input_tokens", 0) if isinstance(usage, dict) else getattr(usage, "input_tokens", 0)
-    output_tokens: int = usage.get("output_tokens", 0) if isinstance(usage, dict) else getattr(usage, "output_tokens", 0)
+    input_tokens, output_tokens = _extract_token_counts(usage)
 
     _log_call(operation, latency_ms, input_tokens, output_tokens)
     return str(response.content).strip()
@@ -342,7 +352,7 @@ def build_retrieve_node(embeddings_client: VertexAIEmbeddings | None, top_k: int
                     f"docs={len(documents)}"
                 )
                 use_embeddings = True
-            except Exception as exc:  # noqa: BLE001
+            except (OSError, ValueError, RuntimeError) as exc:
                 print(f"[retrieve] embedding failed ({exc}); using bag-of-words fallback")
 
         scored: list[RetrievedDoc] = []
@@ -450,7 +460,7 @@ if __name__ == "__main__":
                 project=VERTEX_PROJECT,
                 location=VERTEX_LOCATION,
             )
-        except Exception as exc:  # noqa: BLE001
+        except (OSError, ValueError, RuntimeError) as exc:
             print(f"Embeddings client init failed ({exc}); will use BoW fallback.\n")
 
     graph = build_graph(llm, embeddings_client)
