@@ -1,0 +1,37 @@
+{
+  "name": "jz-genai-agent-toolkit",
+  "version": "0.1.0",
+  "description": "Portable LangGraph.js + Vertex AI Gemini agentic core with LLM-native observability",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "example:simple": "node examples/simple-parse/index.js",
+    "example:email": "node examples/email-quote/index.js"
+  },
+  "keywords": [
+    "langgraph",
+    "vertex-ai",
+    "gemini",
+    "agentic",
+    "llm",
+    "observability"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@azure-rest/ai-inference": "^1.0.0-beta.5",
+    "@azure/core-auth": "^1.9.0",
+    "@google-cloud/vertexai": "^1.10.0",
+    "@langchain/core": "^0.3.58",
+    "@langchain/langgraph": "^0.2.53",
+    "dotenv": "^16.4.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "jest": "^29.7.0"
+  }
+}
