@@ -92,4 +92,19 @@ describe("VertexAIProvider", () => {
     );
   });
 
+  test("propagates SDK errors", async () => {
+    const provider = new VertexAIProvider({
+      project: "project-id",
+      location: "us-central1",
+      model: "gemini-2.0-flash-001",
+      vertexFactory: () => ({
+        models: {
+          generateContent: jest.fn().mockRejectedValue(new Error("upstream failure"))
+        }
+      })
+    });
+
+    await expect(provider.call({ prompt: "Hello" })).rejects.toThrow("upstream failure");
+  });
+
 });
