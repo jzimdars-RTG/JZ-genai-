@@ -1,11 +1,15 @@
-import { afterAll, beforeEach, describe, expect, jest, test } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { VertexAIProvider } from "../../../src/llm/providers/vertexai.js";
 
 describe("VertexAIProvider", () => {
   const originalCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
   beforeEach(() => {
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = "/tmp/fake-creds.json";
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = "mock-credentials";
+  });
+
+  afterEach(() => {
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = originalCredentials;
   });
 
   test("maps generateContent response and includes system instruction config", async () => {
@@ -61,6 +65,20 @@ describe("VertexAIProvider", () => {
     });
   });
 
+  test("defaults content to empty string when response text is missing", async () => {
+    const provider = new VertexAIProvider({
+      project: "project-id",
+      location: "us-central1",
+      model: "gemini-2.0-flash-001",
+      vertexFactory: () => ({ models: { generateContent: jest.fn().mockResolvedValue({ usageMetadata: {} }) } })
+    });
+
+    const result = await provider.call({ prompt: "Hello" });
+
+    expect(result.content).toBe("");
+    expect(result.usage).toEqual({ inputTokens: 0, outputTokens: 0, totalTokens: 0 });
+  });
+
   test("requires project or GOOGLE_APPLICATION_CREDENTIALS", async () => {
     process.env.GOOGLE_APPLICATION_CREDENTIALS = "";
     const provider = new VertexAIProvider({
@@ -74,7 +92,4 @@ describe("VertexAIProvider", () => {
     );
   });
 
-  afterAll(() => {
-    process.env.GOOGLE_APPLICATION_CREDENTIALS = originalCredentials;
-  });
 });
