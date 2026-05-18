@@ -13,7 +13,8 @@ flowchart TD
   START([START]) --> parse[parse]
   parse --> reflect[reflect]
   reflect -->|confidence low + retries left| parse
-  reflect -->|confidence ok| enrich[enrich]
+  reflect -->|confidence ok| retrieve[retrieve]
+  retrieve --> enrich[enrich]
   enrich --> decide[decide]
   decide --> humanApproval[humanApproval]
   humanApproval --> END([END])
@@ -39,6 +40,7 @@ node examples/simple-parse/index.js
 | `VERTEX_AI_PROJECT` | Vertex | - | GCP project for Vertex AI |
 | `VERTEX_AI_LOCATION` | No | `us-central1` | Vertex AI location |
 | `VERTEX_AI_MODEL` | No | `gemini-2.0-flash-001` | Vertex model name |
+| `VERTEX_AI_EMBEDDING_MODEL` | No | `text-embedding-004` | Vertex embedding model for RAG |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Vertex* | - | Service account credential path |
 | `AZURE_AI_ENDPOINT` | Azure | - | Azure AI Inference endpoint |
 | `AZURE_AI_KEY` | Azure | - | Azure AI Inference API key |
@@ -88,6 +90,39 @@ Switch providers by editing `.env`:
 LLM_PRIMARY_PROVIDER=azureai
 LLM_FALLBACK_PROVIDER=vertexai
 ```
+
+## RAG Retrieval
+
+Pass a `documents` array to `agent.run()` to enable in-memory vector retrieval:
+
+```js
+const result = await agent.run({
+  inputText: "Quote for a limo pickup at DTW",
+  documents: [
+    { id: "kb-001", text: "Airport transfer rates start at $75 for trips under 20 miles..." },
+    { id: "kb-002", text: "Vehicles available: Town Car, Sprinter van, stretch limo..." }
+  ]
+});
+
+console.log(result.state.retrievedContext); // top-K scored documents
+```
+
+The `retrieve` node embeds the query and each document via Vertex AI `text-embedding-004`, ranks by cosine similarity, and stores top-K results as `retrievedContext` on state. When Vertex AI credentials are unavailable, it falls back to bag-of-words cosine similarity automatically.
+
+See `examples/rag-retrieval/` for a runnable demo with an 8-document ground-transportation knowledge base.
+
+## Python
+
+A self-contained Python agent implementing the same ReAct + self-reflection + RAG pattern lives in `python/`:
+
+```bash
+cd python
+pip install -r requirements.txt
+cp ../.env.example .env   # fill in VERTEX_AI_PROJECT / GOOGLE_APPLICATION_CREDENTIALS
+python agent.py
+```
+
+The Python agent mirrors the JS graph: `parse → reflect → (retry or retrieve) → decide → END`, logs the same JSONL observability schema (`input_tokens`, `output_tokens`, `cost_usd`, `latency_ms`), and uses `langchain-google-vertexai` + `langgraph` (Python). See `python/README.md` for details.
 
 ## Consume via git subtree
 

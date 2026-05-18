@@ -51,10 +51,10 @@ export function createAgent(options = {}) {
     /**
      * Runs the full agent graph.
      *
-     * @param {{ inputText: string }} params
+     * @param {{ inputText: string, documents?: Array<{ id: string, text: string }> }} params
      */
-    async run({ inputText }) {
-      const initialState = createInitialState(inputText);
+    async run({ inputText, documents = [] }) {
+      const initialState = createInitialState(inputText, documents);
       const result = await graph.invoke(initialState);
       return {
         state: result,

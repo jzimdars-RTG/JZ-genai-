@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/.bin/jest",
     "example:simple": "node examples/simple-parse/index.js",
-    "example:email": "node examples/email-quote/index.js"
+    "example:email": "node examples/email-quote/index.js",
+    "example:rag": "node examples/rag-retrieval/index.js"
   },
   "keywords": [
     "langgraph",

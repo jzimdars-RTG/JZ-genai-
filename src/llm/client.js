@@ -21,4 +21,28 @@ export class LLMClient {
       call: () => this.router.callWithFallback({ prompt, systemPrompt })
     });
   }
+
+  /**
+   * Embeds text using Vertex AI `text-embedding-004` via `@google/genai`.
+   * Returns an empty array (triggering bag-of-words fallback in the retrieve node)
+   * when credentials are missing or the call fails.
+   *
+   * @param {{ text: string }} params
+   * @returns {Promise<number[]>}
+   */
+  async embed({ text }) {
+    try {
+      const { GoogleGenAI } = await import("@google/genai");
+      const project = process.env.VERTEX_AI_PROJECT;
+      const location = process.env.VERTEX_AI_LOCATION ?? "us-central1";
+      if (!project) return [];
+      const ai = new GoogleGenAI({ vertexai: true, project, location });
+      const model = process.env.VERTEX_AI_EMBEDDING_MODEL ?? "text-embedding-004";
+      const response = await ai.models.embedContent({ model, contents: text });
+      const values = response.embeddings?.[0]?.values;
+      return Array.isArray(values) && values.length > 0 ? values : [];
+    } catch {
+      return [];
+    }
+  }
 }
