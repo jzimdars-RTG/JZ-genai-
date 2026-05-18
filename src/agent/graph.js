@@ -4,11 +4,16 @@ import { createEnrichNode } from "./nodes/enrich.js";
 import { createHumanApprovalNode } from "./nodes/humanApproval.js";
 import { createParseNode } from "./nodes/parse.js";
 import { createReflectNode } from "./nodes/reflect.js";
+import { createRetrieveNode } from "./nodes/retrieve.js";
 
 const AgentStateAnnotation = Annotation.Root({
   inputText: Annotation({
     reducer: (_, update) => update,
     default: () => ""
+  }),
+  documents: Annotation({
+    reducer: (_, update) => update,
+    default: () => []
   }),
   parseResult: Annotation({
     reducer: (_, update) => update,
@@ -17,6 +22,10 @@ const AgentStateAnnotation = Annotation.Root({
   reflection: Annotation({
     reducer: (_, update) => update,
     default: () => null
+  }),
+  retrievedContext: Annotation({
+    reducer: (_, update) => update,
+    default: () => []
   }),
   enrichments: Annotation({
     reducer: (_, update) => update,
@@ -43,13 +52,14 @@ const AgentStateAnnotation = Annotation.Root({
 /**
  * Builds the LangGraph agent state graph.
  *
- * @param {{ llmClient: { call: (params: { prompt: string, systemPrompt?: string, operationName: string }) => Promise<{ content: string }> }, reflectionConfidenceThreshold: number, maxReflectionRetries: number, humanApprovalMode: "auto"|"stdin" }} options
+ * @param {{ llmClient: { call: (params: { prompt: string, systemPrompt?: string, operationName: string }) => Promise<{ content: string }>, embed: (params: { text: string }) => Promise<number[]> }, reflectionConfidenceThreshold: number, maxReflectionRetries: number, humanApprovalMode: "auto"|"stdin", topK?: number }} options
  */
 export function buildAgentGraph({
   llmClient,
   reflectionConfidenceThreshold,
   maxReflectionRetries,
-  humanApprovalMode
+  humanApprovalMode,
+  topK
 }) {
   const parseNode = createParseNode({ llmClient });
   const reflectNode = createReflectNode({
@@ -57,6 +67,7 @@ export function buildAgentGraph({
     confidenceThreshold: reflectionConfidenceThreshold,
     maxRetries: maxReflectionRetries
   });
+  const retrieveNode = createRetrieveNode({ llmClient, topK });
   const enrichNode = createEnrichNode();
   const decideNode = createDecideNode();
   const humanApprovalNode = createHumanApprovalNode({ mode: humanApprovalMode });
@@ -64,6 +75,7 @@ export function buildAgentGraph({
   const graph = new StateGraph(AgentStateAnnotation)
     .addNode("parse", parseNode)
     .addNode("reflect", reflectNode)
+    .addNode("retrieve", retrieveNode)
     .addNode("enrich", enrichNode)
     .addNode("decide", decideNode)
     .addNode("humanApproval", humanApprovalNode)
@@ -76,13 +88,14 @@ export function buildAgentGraph({
           return "parse";
         }
 
-        return "enrich";
+        return "retrieve";
       },
       {
         parse: "parse",
-        enrich: "enrich"
+        retrieve: "retrieve"
       }
     )
+    .addEdge("retrieve", "enrich")
     .addEdge("enrich", "decide")
     .addEdge("decide", "humanApproval")
     .addEdge("humanApproval", END);

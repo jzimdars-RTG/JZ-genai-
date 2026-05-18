@@ -17,7 +17,8 @@ describe("agent graph", () => {
           throw new Error("No more mocked responses.");
         }
         return next;
-      }
+      },
+      embed: async () => []
     };
 
     const graph = buildAgentGraph({
@@ -29,8 +30,10 @@ describe("agent graph", () => {
 
     const result = await graph.invoke({
       inputText: "please quote",
+      documents: [],
       parseResult: null,
       reflection: null,
+      retrievedContext: [],
       enrichments: null,
       decision: null,
       humanApproved: false,
@@ -42,5 +45,6 @@ describe("agent graph", () => {
     expect(result.done).toBe(true);
     expect(result.retryCount).toBe(1);
     expect(result.parseResult.passengers).toBe(2);
+    expect(result.retrievedContext).toEqual([]);
   });
 });
