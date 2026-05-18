@@ -18,7 +18,7 @@ export class VertexAIProvider {
    * @param {{ prompt: string, systemPrompt?: string }} params
    */
   async call({ prompt, systemPrompt }) {
-    if (!this.project && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    if (!this.project && !process.env.VERTEX_AI_PROJECT && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
       throw new Error("VERTEX_AI_PROJECT or GOOGLE_APPLICATION_CREDENTIALS is required for Vertex AI.");
     }
 

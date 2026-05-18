@@ -3,6 +3,7 @@ import { VertexAIProvider } from "../../../src/llm/providers/vertexai.js";
 
 describe("VertexAIProvider", () => {
   const originalCredentials = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  const originalVertexProject = process.env.VERTEX_AI_PROJECT;
 
   beforeEach(() => {
     process.env.GOOGLE_APPLICATION_CREDENTIALS = "mock-credentials";
@@ -10,6 +11,7 @@ describe("VertexAIProvider", () => {
 
   afterEach(() => {
     process.env.GOOGLE_APPLICATION_CREDENTIALS = originalCredentials;
+    process.env.VERTEX_AI_PROJECT = originalVertexProject;
   });
 
   test("maps generateContent response and includes system instruction config", async () => {
@@ -81,6 +83,7 @@ describe("VertexAIProvider", () => {
 
   test("requires project or GOOGLE_APPLICATION_CREDENTIALS", async () => {
     process.env.GOOGLE_APPLICATION_CREDENTIALS = "";
+    process.env.VERTEX_AI_PROJECT = "";
     const provider = new VertexAIProvider({
       location: "us-central1",
       model: "gemini-2.0-flash-001",
@@ -90,6 +93,19 @@ describe("VertexAIProvider", () => {
     await expect(provider.call({ prompt: "Hello" })).rejects.toThrow(
       "VERTEX_AI_PROJECT or GOOGLE_APPLICATION_CREDENTIALS is required for Vertex AI."
     );
+  });
+
+  test("allows VERTEX_AI_PROJECT from environment when project is not supplied", async () => {
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = "";
+    process.env.VERTEX_AI_PROJECT = "env-project-id";
+    const generateContent = jest.fn().mockResolvedValue({ text: "ok", usageMetadata: {} });
+    const provider = new VertexAIProvider({
+      location: "us-central1",
+      model: "gemini-2.0-flash-001",
+      vertexFactory: () => ({ models: { generateContent } })
+    });
+
+    await expect(provider.call({ prompt: "Hello" })).resolves.toMatchObject({ content: "ok" });
   });
 
   test("propagates SDK errors", async () => {
